@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+
+  <title>Chat App</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .chat {
+      width: 420px;
+      height: 600px;
+      background: #1e293b;
+      border-radius: 15px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      background: #2563eb;
+      padding: 15px;
+      color: white;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    #messages {
+      flex: 1;
+      list-style: none;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    #messages li {
+      background: #334155;
+      color: white;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 10px;
+    }
+
+    .system {
+      background: transparent !important;
+      color: #94a3b8 !important;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .typing {
+      font-size: 13px;
+      color: #94a3b8;
+      padding: 5px 10px;
+      height: 20px;
+    }
+
+    .form {
+      display: flex;
+      padding: 10px;
+      gap: 10px;
+      background: #0f172a;
+    }
+
+    input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+    }
+
+    button {
+      padding: 10px;
+      border: none;
+      background: #2563eb;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="chat">
+
+    <div class="header">Socket Chat</div>
+
+    <ul id="messages"></ul>
+
+    <div class="typing" id="typing"></div>
+
+    <div class="form">
+      <input id="input" placeholder="Type message..." />
+      <button onclick="send()">Send</button>
+    </div>
+
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    const socket = io();
+
+    const input = document.getElementById("input");
+    const messages = document.getElementById("messages");
+    const typingBox = document.getElementById("typing");
+
+    let name = prompt("Enter your name:");
+    socket.emit("join", name);
+
+    // send message
+    function send() {
+      if (!input.value.trim()) return;
+
+      socket.emit("chat message", input.value);
+      input.value = "";
+    }
+
+    // typing logic
+    let typingTimeout;
+
+    input.addEventListener("input", () => {
+      socket.emit("typing");
+
+      clearTimeout(typingTimeout);
+
+      typingTimeout = setTimeout(() => {
+        socket.emit("stop typing");
+      }, 1000);
+    });
+
+    // receive message
+    socket.on("chat message", (data) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<b>${data.user}:</b> ${data.text}`;
+      messages.appendChild(li);
+      messages.scrollTop = messages.scrollHeight;
+    });
+
+    // typing indicator
+    socket.on("typing", (user) => {
+      typingBox.innerText = `${user} is typing...`;
+    });
+
+    socket.on("stop typing", () => {
+      typingBox.innerText = "";
+    });
+
+    // system messages
+    socket.on("user joined", (user) => {
+      const li = document.createElement("li");
+      li.classList.add("system");
+      li.innerText = `${user} joined the chat`;
+      messages.appendChild(li);
+    });
+
+    socket.on("user left", (user) => {
+      const li = document.createElement("li");
+      li.classList.add("system");
+      li.innerText = `${user} left the chat`;
+      messages.appendChild(li);
+    });
+  </script>
+
+</body>
+
+</html>
